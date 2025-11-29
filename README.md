@@ -30,7 +30,7 @@ StreeSkill is a learning platform that provides short, reel-style vertical video
 
 ## Accessibility
 - Videos dubbed in few regional Indian languages (initially) 
-- Text captions available for deaf and hard-of-hearing learners  
+- Text captions available for deaf and hard-of-hearing learners.
 
 ---
 

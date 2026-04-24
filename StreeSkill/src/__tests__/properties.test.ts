@@ -36,17 +36,21 @@ describe('Property 1: Course Reel Count Bounds', () => {
  * **Validates: Requirements 4.3**
  */
 describe('Property 2: Language Toggle Alternation', () => {
-  test('toggling language alternates between hindi and tamil', () => {
+  test('toggling language cycles through the supported caption languages', () => {
     fc.assert(
       fc.property(
-        fc.constantFrom<Language>('hindi', 'tamil'),
+        fc.constantFrom<Language>('hindi', 'english', 'tamil'),
         (currentLanguage) => {
-          const newLanguage = toggleLanguageValue(currentLanguage);
-          if (currentLanguage === 'hindi') {
-            return newLanguage === 'tamil';
-          } else {
-            return newLanguage === 'hindi';
-          }
+          const nextLanguage = toggleLanguageValue(currentLanguage);
+          const secondLanguage = toggleLanguageValue(nextLanguage);
+          const thirdLanguage = toggleLanguageValue(secondLanguage);
+
+          return (
+            nextLanguage !== currentLanguage &&
+            secondLanguage !== currentLanguage &&
+            secondLanguage !== nextLanguage &&
+            thirdLanguage === currentLanguage
+          );
         }
       ),
       { numRuns: 100 }

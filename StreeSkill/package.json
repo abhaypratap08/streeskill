@@ -3,11 +3,15 @@
   "version": "1.0.0",
   "main": "expo/AppEntry.js",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
-    "test": "jest"
+    "start": "HOME=/tmp node node_modules/expo/bin/cli start",
+    "android": "HOME=/tmp node node_modules/expo/bin/cli start --android",
+    "ios": "HOME=/tmp node node_modules/expo/bin/cli start --ios",
+    "web": "HOME=/tmp node node_modules/expo/bin/cli start --web",
+    "test": "node node_modules/jest/bin/jest.js",
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+    "expo:config": "HOME=/tmp node node_modules/expo/bin/cli config --type public",
+    "build:preview": "HOME=/tmp eas build -p android --profile preview --non-interactive",
+    "build:production": "HOME=/tmp eas build -p android --profile production --non-interactive"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -35,6 +39,8 @@
     "@types/jest": "^29.5.12",
     "@types/react": "~19.1.10",
     "babel-preset-expo": "^54.0.7",
+    "baseline-browser-mapping": "^2.10.21",
+    "eas-cli": "^16.24.1",
     "fast-check": "^3.22.0",
     "jest": "^29.7.0",
     "jest-expo": "~54.0.0",

@@ -35,7 +35,10 @@ export default function ProfileScreen({ navigation }: Props) {
   const [userName, setUserName] = useState('StreeSkill Learner');
 
   useEffect(() => {
-    const randomFact = FUN_FACTS[Math.floor(Math.random() * FUN_FACTS.length)];
+    const randomFact =
+      FUN_FACTS[Math.floor(Math.random() * FUN_FACTS.length)] ??
+      FUN_FACTS[0] ??
+      'Keep learning with StreeSkill.';
     setFunFact(randomFact);
     loadUserData();
     analyticsApi.trackEvent(analyticsApi.events.SCREEN_VIEW, { screen: 'Profile' });

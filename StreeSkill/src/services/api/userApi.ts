@@ -3,6 +3,7 @@ import { API_CONFIG, USE_MOCK_API, getHeaders } from './config';
 import { ApiResponse, User, UserPreferences, UserStats } from './types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi } from './authApi';
+import { normalizeUser, normalizeUserPreferences } from './normalizers';
 
 const USER_KEY = '@streeskill_user';
 const STATS_KEY = '@streeskill_stats';
@@ -29,7 +30,22 @@ export const userApi = {
       headers: getHeaders(token || undefined),
       body: JSON.stringify(data),
     });
-    return response.json();
+    const result = await response.json();
+    if (result.success && result.data) {
+      const normalizedUser = normalizeUser(result.data);
+      if (normalizedUser) {
+        const userStr = await AsyncStorage.getItem(USER_KEY);
+        const existingUser = userStr ? normalizeUser(JSON.parse(userStr)) : undefined;
+        const mergedUser = {
+          ...(existingUser || normalizedUser),
+          ...normalizedUser,
+          preferences: normalizedUser.preferences,
+        };
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(mergedUser));
+        result.data = mergedUser;
+      }
+    }
+    return result;
   },
 
   // PUT /user/password - Change password
@@ -70,7 +86,20 @@ export const userApi = {
       headers: getHeaders(token || undefined),
       body: JSON.stringify(preferences),
     });
-    return response.json();
+    const result = await response.json();
+    if (result.success && result.data) {
+      const normalizedPreferences = normalizeUserPreferences(result.data);
+      const userStr = await AsyncStorage.getItem(USER_KEY);
+      if (userStr) {
+        const existingUser = normalizeUser(JSON.parse(userStr));
+        if (existingUser) {
+          existingUser.preferences = normalizedPreferences;
+          await AsyncStorage.setItem(USER_KEY, JSON.stringify(existingUser));
+        }
+      }
+      result.data = normalizedPreferences;
+    }
+    return result;
   },
 
   // GET /user/stats - Get learning stats

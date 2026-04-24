@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
+const { formatPreferences, formatUser } = require('../utils/userSerializer');
 
 const router = express.Router();
 
@@ -55,8 +56,13 @@ router.put('/profile', authMiddleware, async (req, res) => {
     }
 
     const [users] = await pool.query('SELECT id, email, name, avatar, created_at FROM users WHERE id = ?', [req.userId]);
+    const [prefs] = await pool.query('SELECT * FROM user_preferences WHERE user_id = ?', [req.userId]);
 
-    res.json({ success: true, data: users[0], message: 'Profile updated successfully' });
+    res.json({
+      success: true,
+      data: formatUser(users[0], prefs[0] || {}),
+      message: 'Profile updated successfully'
+    });
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ success: false, error: 'Server error' });
@@ -108,7 +114,11 @@ router.put('/settings', authMiddleware, async (req, res) => {
 
     const [prefs] = await pool.query('SELECT * FROM user_preferences WHERE user_id = ?', [req.userId]);
 
-    res.json({ success: true, data: prefs[0], message: 'Settings updated' });
+    res.json({
+      success: true,
+      data: formatPreferences(prefs[0]),
+      message: 'Settings updated'
+    });
   } catch (error) {
     console.error('Update settings error:', error);
     res.status(500).json({ success: false, error: 'Server error' });

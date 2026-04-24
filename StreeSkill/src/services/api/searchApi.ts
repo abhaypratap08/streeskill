@@ -75,17 +75,9 @@ export const searchApi = {
       return { success: true, data: suggestions.slice(0, 8) };
     }
     
-    // Use Google Suggest API for real suggestions
     try {
-      const response = await fetch(
-        `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(query + ' tutorial')}`
-      );
-      const data = await response.json();
-      const suggestions: SearchSuggestion[] = data[1]?.slice(0, 5).map((text: string) => ({
-        text: text.replace(' tutorial', ''),
-        type: 'trending' as const,
-      })) || [];
-      return { success: true, data: suggestions };
+      const response = await fetch(`${API_CONFIG.BASE_URL}/search/suggestions?q=${encodeURIComponent(query)}`);
+      return response.json();
     } catch {
       return { success: true, data: [] };
     }

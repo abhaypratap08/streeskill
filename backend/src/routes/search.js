@@ -16,7 +16,7 @@ const TRENDING_SEARCHES = [
 ];
 
 // GET /search - Search courses, products, posts
-router.get('/', optionalAuth, async (req, res) => {
+router.get('/search', optionalAuth, async (req, res) => {
   try {
     const { q } = req.query;
 
@@ -96,7 +96,7 @@ router.get('/', optionalAuth, async (req, res) => {
 });
 
 // GET /search/suggestions - Autocomplete suggestions
-router.get('/suggestions', async (req, res) => {
+router.get('/search/suggestions', async (req, res) => {
   try {
     const { q } = req.query;
 
@@ -131,7 +131,7 @@ router.get('/suggestions', async (req, res) => {
 });
 
 // GET /recommendations - Recommended courses
-router.get('/', optionalAuth, async (req, res) => {
+router.get('/recommendations', optionalAuth, async (req, res) => {
   try {
     const [courses] = await pool.query(
       'SELECT * FROM courses ORDER BY rating DESC, enrolled_count DESC LIMIT 5'

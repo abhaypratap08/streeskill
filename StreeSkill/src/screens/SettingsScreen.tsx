@@ -6,12 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { COLORS } from '../constants/theme';
-import { userApi } from '../services/api';
+import { UserPreferences, userApi } from '../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
 const LANGUAGES = ['English', 'Hindi', 'Tamil', 'Telugu', 'Kannada', 'Malayalam'];
 const CAPTION_LANGUAGES = ['Hindi', 'English', 'Tamil'];
+type BooleanPreferenceKey = keyof Pick<UserPreferences, 'notifications' | 'autoPlay' | 'downloadOverWifi'>;
 
 export default function SettingsScreen({ navigation }: Props) {
   const [notifications, setNotifications] = useState(true);
@@ -89,15 +90,36 @@ export default function SettingsScreen({ navigation }: Props) {
     }
   };
 
-  const handleSettingsChange = async (key: string, value: boolean) => {
-    const updates: Record<string, boolean> = {};
-    updates[key] = value;
+  const handleSettingsChange = async (key: BooleanPreferenceKey, value: boolean) => {
+    const updates: Partial<UserPreferences> = { [key]: value };
     
     if (key === 'notifications') setNotifications(value);
     if (key === 'autoPlay') setAutoPlay(value);
     if (key === 'downloadOverWifi') setDownloadOverWifi(value);
     
-    await userApi.updateSettings(updates as never);
+    await userApi.updateSettings(updates);
+  };
+
+  const handleLanguageSelect = async (language: string) => {
+    setSelectedLanguage(language);
+    setLanguageModal(false);
+    await userApi.updateSettings({ language });
+  };
+
+  const toggleCaption = async (lang: string) => {
+    let nextCaptions = selectedCaptions;
+
+    if (selectedCaptions.includes(lang)) {
+      if (selectedCaptions.length === 1) {
+        return;
+      }
+      nextCaptions = selectedCaptions.filter(l => l !== lang);
+    } else {
+      nextCaptions = [...selectedCaptions, lang];
+    }
+
+    setSelectedCaptions(nextCaptions);
+    await userApi.updateSettings({ captionLanguages: nextCaptions });
   };
 
   const handleChangePasswordOld = () => {
@@ -126,16 +148,6 @@ export default function SettingsScreen({ navigation }: Props) {
         { text: 'Rate Now', onPress: () => Linking.openURL('https://play.google.com/store') }
       ]
     );
-  };
-
-  const toggleCaption = (lang: string) => {
-    if (selectedCaptions.includes(lang)) {
-      if (selectedCaptions.length > 1) {
-        setSelectedCaptions(selectedCaptions.filter(l => l !== lang));
-      }
-    } else {
-      setSelectedCaptions([...selectedCaptions, lang]);
-    }
   };
 
   const SettingItem = ({ 
@@ -202,13 +214,13 @@ export default function SettingsScreen({ navigation }: Props) {
         <Text style={styles.sectionHeader}>Preferences</Text>
         <View style={styles.sectionCard}>
           <SettingItem icon="🔔" title="Notifications" subtitle={notifications ? 'On' : 'Off'}
-            hasSwitch switchValue={notifications} onSwitchChange={setNotifications} />
+            hasSwitch switchValue={notifications} onSwitchChange={(value) => void handleSettingsChange('notifications', value)} />
           <SettingItem icon="🌙" title="Dark Mode" subtitle="Coming soon"
             hasSwitch switchValue={darkMode} onSwitchChange={(v) => { setDarkMode(v); Alert.alert('Coming Soon', 'Dark mode will be available in a future update!'); setDarkMode(false); }} />
           <SettingItem icon="▶️" title="Auto-play Videos" subtitle={autoPlay ? 'On' : 'Off'}
-            hasSwitch switchValue={autoPlay} onSwitchChange={setAutoPlay} />
+            hasSwitch switchValue={autoPlay} onSwitchChange={(value) => void handleSettingsChange('autoPlay', value)} />
           <SettingItem icon="📶" title="Download over Wi-Fi only" subtitle={downloadOverWifi ? 'On' : 'Off'}
-            hasSwitch switchValue={downloadOverWifi} onSwitchChange={setDownloadOverWifi} />
+            hasSwitch switchValue={downloadOverWifi} onSwitchChange={(value) => void handleSettingsChange('downloadOverWifi', value)} />
         </View>
 
         <Text style={styles.sectionHeader}>Language</Text>
@@ -262,7 +274,7 @@ export default function SettingsScreen({ navigation }: Props) {
       {/* Language Modal */}
       <ModalWrapper visible={languageModal} onClose={() => setLanguageModal(false)} title="Select Language">
         {LANGUAGES.map(lang => (
-          <TouchableOpacity key={lang} style={styles.optionItem} onPress={() => { setSelectedLanguage(lang); setLanguageModal(false); }}>
+          <TouchableOpacity key={lang} style={styles.optionItem} onPress={() => void handleLanguageSelect(lang)}>
             <Text style={styles.optionText}>{lang}</Text>
             {selectedLanguage === lang && <Text style={styles.checkmark}>✓</Text>}
           </TouchableOpacity>
@@ -272,7 +284,7 @@ export default function SettingsScreen({ navigation }: Props) {
       {/* Caption Modal */}
       <ModalWrapper visible={captionModal} onClose={() => setCaptionModal(false)} title="Video Captions">
         {CAPTION_LANGUAGES.map(lang => (
-          <TouchableOpacity key={lang} style={styles.optionItem} onPress={() => toggleCaption(lang)}>
+          <TouchableOpacity key={lang} style={styles.optionItem} onPress={() => void toggleCaption(lang)}>
             <Text style={styles.optionText}>{lang}</Text>
             {selectedCaptions.includes(lang) && <Text style={styles.checkmark}>✓</Text>}
           </TouchableOpacity>

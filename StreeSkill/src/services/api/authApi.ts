@@ -2,16 +2,15 @@
 import { API_CONFIG, USE_MOCK_API, getHeaders } from './config';
 import { ApiResponse, User, AuthTokens, LoginRequest, RegisterRequest } from './types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { normalizeUser } from './normalizers';
 
 const AUTH_TOKEN_KEY = '@streeskill_auth_token';
 const USER_KEY = '@streeskill_user';
 
-// Mock user for development
-const MOCK_USER: User = {
-  id: 'user_001',
-  email: 'streeskill@example.com',
-  name: 'StreeSkill Learner',
-  avatar: undefined,
+const buildMockUser = (overrides: Partial<Pick<User, 'id' | 'email' | 'name'>> = {}): User => ({
+  id: overrides.id ?? 'user_001',
+  email: overrides.email ?? 'streeskill@example.com',
+  name: overrides.name ?? 'StreeSkill Learner',
   createdAt: new Date().toISOString(),
   preferences: {
     notifications: true,
@@ -20,14 +19,21 @@ const MOCK_USER: User = {
     language: 'English',
     captionLanguages: ['Hindi', 'English', 'Tamil'],
   },
-};
+});
+
+// Mock user for development
+const MOCK_USER: User = buildMockUser();
 
 export const authApi = {
   // POST /auth/register - User signup
   register: async (data: RegisterRequest): Promise<ApiResponse<{ user: User; tokens: AuthTokens }>> => {
     if (USE_MOCK_API) {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const newUser: User = { ...MOCK_USER, email: data.email, name: data.name, id: `user_${Date.now()}` };
+      const newUser = buildMockUser({
+        email: data.email,
+        name: data.name,
+        id: `user_${Date.now()}`,
+      });
       const tokens: AuthTokens = { accessToken: 'mock_token_' + Date.now(), refreshToken: 'mock_refresh_' + Date.now(), expiresIn: 3600 };
       await AsyncStorage.setItem(AUTH_TOKEN_KEY, tokens.accessToken);
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(newUser));
@@ -41,8 +47,12 @@ export const authApi = {
     });
     const result = await response.json();
     if (result.success && result.data?.tokens) {
+      const normalizedUser = normalizeUser(result.data.user);
       await AsyncStorage.setItem(AUTH_TOKEN_KEY, result.data.tokens.accessToken);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(result.data.user));
+      if (normalizedUser) {
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+        result.data.user = normalizedUser;
+      }
     }
     return result;
   },
@@ -67,8 +77,12 @@ export const authApi = {
     });
     const result = await response.json();
     if (result.success && result.data?.tokens) {
+      const normalizedUser = normalizeUser(result.data.user);
       await AsyncStorage.setItem(AUTH_TOKEN_KEY, result.data.tokens.accessToken);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(result.data.user));
+      if (normalizedUser) {
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+        result.data.user = normalizedUser;
+      }
     }
     return result;
   },
@@ -122,7 +136,14 @@ export const authApi = {
     const response = await fetch(`${API_CONFIG.BASE_URL}/auth/me`, {
       headers: getHeaders(token),
     });
-    return response.json();
+    const result = await response.json();
+    if (result.success && result.data) {
+      const normalizedUser = normalizeUser(result.data);
+      if (normalizedUser) {
+        result.data = normalizedUser;
+      }
+    }
+    return result;
   },
 
   // Check if user is authenticated

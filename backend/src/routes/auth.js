@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../config/database');
 const { authMiddleware } = require('../middleware/auth');
+const { formatUser } = require('../utils/userSerializer');
 
 const router = express.Router();
 
@@ -51,7 +52,10 @@ router.post('/register', async (req, res) => {
     res.json({
       success: true,
       data: {
-        user: { id: userId, email, name, createdAt: new Date().toISOString() },
+        user: formatUser(
+          { id: userId, email, name, createdAt: new Date().toISOString() },
+          { caption_languages: JSON.stringify(['Hindi', 'English', 'Tamil']) }
+        ),
         tokens: { accessToken, refreshToken, expiresIn: 604800 }
       }
     });
@@ -95,12 +99,7 @@ router.post('/login', async (req, res) => {
       success: true,
       data: {
         user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          avatar: user.avatar,
-          createdAt: user.created_at,
-          preferences: prefs[0] || {}
+          ...formatUser(user, prefs[0] || {})
         },
         tokens: { accessToken, refreshToken, expiresIn: 604800 }
       }
@@ -148,11 +147,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 
     res.json({
       success: true,
-      data: {
-        ...users[0],
-        createdAt: users[0].created_at,
-        preferences: prefs[0] || {}
-      }
+      data: formatUser(users[0], prefs[0] || {})
     });
   } catch (error) {
     console.error('Get me error:', error);

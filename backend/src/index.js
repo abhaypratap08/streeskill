@@ -15,8 +15,23 @@ const youtubeRoutes = require('./routes/youtube');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // Health check
@@ -44,9 +59,7 @@ app.get('/api/v1/earnings', (req, res, next) => {
 });
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
-app.use('/api/v1/search', searchRoutes);
-app.use('/api/v1/recommendations', searchRoutes);
-app.use('/api/v1/trending', searchRoutes);
+app.use('/api/v1', searchRoutes);
 app.use('/api/v1/youtube', youtubeRoutes);
 
 // 404 handler

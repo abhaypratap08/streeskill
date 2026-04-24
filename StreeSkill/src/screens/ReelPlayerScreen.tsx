@@ -188,7 +188,10 @@ export default function ReelPlayerScreen({ route, navigation }: Props) {
   }, [course, reelId]);
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    if (viewableItems.length > 0 && viewableItems[0].index !== null) setActiveIndex(viewableItems[0].index);
+    const firstViewableItem = viewableItems[0];
+    if (firstViewableItem?.index != null) {
+      setActiveIndex(firstViewableItem.index);
+    }
   }, []);
 
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 80 }).current;

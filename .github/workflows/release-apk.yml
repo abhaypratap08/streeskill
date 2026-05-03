@@ -41,7 +41,7 @@ jobs:
       - name: Build APK with EAS
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npm run build:production-apk:release > eas-build.json
+        run: EXPO_NO_TELEMETRY=1 ./node_modules/.bin/eas build -p android --profile production-apk --non-interactive --wait --json > eas-build.json
 
       - name: Read EAS artifact URL
         id: eas

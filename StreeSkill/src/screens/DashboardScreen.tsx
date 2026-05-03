@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, FlatList,
-  TouchableOpacity, Image, Dimensions, ActivityIndicator,
+  TouchableOpacity, Image, Dimensions, ActivityIndicator, NativeScrollEvent, NativeSyntheticEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -13,7 +13,7 @@ import { useApp } from '../context/AppContext';
 import CourseCard from '../components/CourseCard';
 import { COLORS, SIZES } from '../constants/theme';
 import { searchApi, analyticsApi, youtubeApi } from '../services/api';
-import { YouTubeShort } from '../services/api/youtubeApi';
+import { SkillCategory, YouTubeShort } from '../services/api/youtubeApi';
 
 type NavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<BottomTabParamList, 'Dashboard'>,
@@ -50,43 +50,42 @@ export default function DashboardScreen({ navigation }: { navigation: Navigation
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [youtubeShorts, setYoutubeShorts] = useState<Record<string, YouTubeShort[]>>({});
+  const [youtubeShorts, setYoutubeShorts] = useState<Partial<Record<SkillCategory, YouTubeShort[]>>>({});
   const [shortsLoading, setShortsLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>('mehendi');
+  const [selectedCategory, setSelectedCategory] = useState<SkillCategory>('mehendi');
 
   // Track screen view
   useEffect(() => {
     analyticsApi.trackEvent(analyticsApi.events.SCREEN_VIEW, { screen: 'Dashboard' });
   }, []);
 
-  // Fetch YouTube Shorts for all categories
+  // Fetch YouTube Shorts for the selected category and cache previously loaded categories.
   useEffect(() => {
     const fetchShorts = async () => {
+      if (youtubeShorts[selectedCategory]) {
+        return;
+      }
+
       setShortsLoading(true);
-      const results: Record<string, YouTubeShort[]> = {};
-      
-      // Fetch shorts for each category
-      await Promise.all(
-        SKILL_CATEGORIES.map(async (cat) => {
-          try {
-            const response = await youtubeApi.getShortsByCategory(cat.key as any, 6);
-            if (response.success && response.data) {
-              results[cat.key] = response.data.data || [];
-            } else {
-              results[cat.key] = [];
-            }
-          } catch (error) {
-            results[cat.key] = [];
-          }
-        })
-      );
-      
-      setYoutubeShorts(results);
-      setShortsLoading(false);
+      try {
+        const response = await youtubeApi.getShortsByCategory(selectedCategory, 8);
+        const shorts = response.success && response.data ? response.data.data : [];
+        setYoutubeShorts((current) => ({
+          ...current,
+          [selectedCategory]: shorts,
+        }));
+      } catch (error) {
+        setYoutubeShorts((current) => ({
+          ...current,
+          [selectedCategory]: [],
+        }));
+      } finally {
+        setShortsLoading(false);
+      }
     };
 
     fetchShorts();
-  }, []);
+  }, [selectedCategory, youtubeShorts]);
 
   // Search suggestions
   useEffect(() => {
@@ -123,7 +122,9 @@ export default function DashboardScreen({ navigation }: { navigation: Navigation
     return p.completed > 0 && p.completed < p.total;
   });
 
-  const handleScroll = (e: any) => setActiveSlide(Math.round(e.nativeEvent.contentOffset.x / CARD_WIDTH));
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setActiveSlide(Math.round(event.nativeEvent.contentOffset.x / CARD_WIDTH));
+  };
 
   const renderFeaturedCard = ({ item }: { item: typeof FEATURED_COURSES[0] }) => (
     <TouchableOpacity style={styles.featuredCard} activeOpacity={0.9}

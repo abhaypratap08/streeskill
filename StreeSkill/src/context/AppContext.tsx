@@ -3,12 +3,46 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppContextType, Progress, Language } from '../types';
 
 const STORAGE_KEY = 'streeskill_progress';
+const createCompletedReelsMap = (): Progress['completedReels'] => Object.create(null) as Progress['completedReels'];
+const createDefaultProgress = (): Progress => ({
+  completedReels: createCompletedReelsMap(),
+});
 
-const defaultProgress: Progress = {
-  completedReels: {},
-};
+const defaultProgress: Progress = createDefaultProgress();
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
+const getCompletedReelsForCourse = (progress: Progress, courseId: string): string[] => {
+  const candidate = Object.prototype.hasOwnProperty.call(progress.completedReels, courseId)
+    ? progress.completedReels[courseId]
+    : undefined;
+
+  return Array.isArray(candidate) ? candidate : [];
+};
+
+const normalizeProgress = (value: unknown): Progress => {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('completedReels' in value) ||
+    typeof value.completedReels !== 'object' ||
+    value.completedReels === null
+  ) {
+    return createDefaultProgress();
+  }
+
+  const normalizedCompletedReels = Object.entries(value.completedReels).reduce<Progress['completedReels']>(
+    (accumulator, [courseId, reelIds]) => {
+      accumulator[courseId] = Array.isArray(reelIds)
+        ? reelIds.filter((reelId): reelId is string => typeof reelId === 'string')
+        : [];
+      return accumulator;
+    },
+    createCompletedReelsMap()
+  );
+
+  return { completedReels: normalizedCompletedReels };
+};
 
 export const toggleLanguageValue = (current: Language): Language => {
   if (current === 'hindi') return 'english';
@@ -21,7 +55,7 @@ export const markReelCompleteInProgress = (
   courseId: string,
   reelId: string
 ): Progress => {
-  const currentCompleted = progress.completedReels[courseId] || [];
+  const currentCompleted = getCompletedReelsForCourse(progress, courseId);
   if (currentCompleted.includes(reelId)) {
     return progress;
   }
@@ -39,7 +73,7 @@ export const calculateProgress = (
   courseId: string,
   totalReels: number
 ): { completed: number; total: number } => {
-  const completed = progress.completedReels[courseId]?.length || 0;
+  const completed = getCompletedReelsForCourse(progress, courseId).length;
   return { completed, total: totalReels };
 };
 
@@ -50,9 +84,13 @@ export const saveProgress = async (progress: Progress): Promise<void> => {
 export const loadProgress = async (): Promise<Progress> => {
   const stored = await AsyncStorage.getItem(STORAGE_KEY);
   if (stored) {
-    return JSON.parse(stored);
+    try {
+      return normalizeProgress(JSON.parse(stored));
+    } catch {
+      return createDefaultProgress();
+    }
   }
-  return defaultProgress;
+  return createDefaultProgress();
 };
 
 export function AppProvider({ children }: { children: ReactNode }) {

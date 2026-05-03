@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { ProductListing } from '../types';
-import { validateProductListing } from '../utils/validation';
+import { parseProductPrice, validateProductListing } from '../utils/validation';
 import SuccessPopup from '../components/SuccessPopup';
 import { COLORS, SIZES } from '../constants/theme';
 import { marketplaceApi, analyticsApi, Earnings } from '../services/api';
@@ -60,7 +60,13 @@ export default function SellScreen() {
 
   const handleSubmit = async () => {
     if (!validateProductListing(listing)) {
-      Alert.alert('Missing Fields', 'Please fill in all required fields (photo, name, and price)');
+      Alert.alert('Invalid Listing', 'Please add a photo, name, and a valid price greater than zero');
+      return;
+    }
+
+    const price = parseProductPrice(listing.price);
+    if (price === undefined) {
+      Alert.alert('Invalid Price', 'Please enter a valid price greater than zero');
       return;
     }
     
@@ -69,7 +75,7 @@ export default function SellScreen() {
       const result = await marketplaceApi.createProduct({
         title: listing.name,
         description: listing.description,
-        price: parseFloat(listing.price),
+        price,
         images: listing.image ? [listing.image] : [],
         category: 'Handmade',
       });

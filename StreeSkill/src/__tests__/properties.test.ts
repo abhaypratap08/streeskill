@@ -7,8 +7,9 @@ import {
   saveProgress,
   loadProgress,
 } from '../context/AppContext';
-import { validateProductListing } from '../utils/validation';
+import { parseProductPrice, validateProductListing } from '../utils/validation';
 import { Progress, Language, ProductListing } from '../types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
  * **Feature: streeskill-app, Property 1: Course Reel Count Bounds**
@@ -36,17 +37,21 @@ describe('Property 1: Course Reel Count Bounds', () => {
  * **Validates: Requirements 4.3**
  */
 describe('Property 2: Language Toggle Alternation', () => {
-  test('toggling language alternates between hindi and tamil', () => {
+  test('toggling language cycles through the supported caption languages', () => {
     fc.assert(
       fc.property(
-        fc.constantFrom<Language>('hindi', 'tamil'),
+        fc.constantFrom<Language>('hindi', 'english', 'tamil'),
         (currentLanguage) => {
-          const newLanguage = toggleLanguageValue(currentLanguage);
-          if (currentLanguage === 'hindi') {
-            return newLanguage === 'tamil';
-          } else {
-            return newLanguage === 'hindi';
-          }
+          const nextLanguage = toggleLanguageValue(currentLanguage);
+          const secondLanguage = toggleLanguageValue(nextLanguage);
+          const thirdLanguage = toggleLanguageValue(secondLanguage);
+
+          return (
+            nextLanguage !== currentLanguage &&
+            secondLanguage !== currentLanguage &&
+            secondLanguage !== nextLanguage &&
+            thirdLanguage === currentLanguage
+          );
         }
       ),
       { numRuns: 100 }
@@ -83,7 +88,7 @@ describe('Property 3: Reel Completion Updates Progress', () => {
 
 /**
  * **Feature: streeskill-app, Property 4: Form Validation Completeness**
- * *For any* product listing form state, validation SHALL return true only when all required fields (name, price, image) are non-empty.
+ * *For any* product listing form state, validation SHALL return true only when all required fields are filled and price is a positive finite number.
  * **Validates: Requirements 5.5**
  */
 describe('Property 4: Form Validation Completeness', () => {
@@ -100,12 +105,28 @@ describe('Property 4: Form Validation Completeness', () => {
           const isValid = validateProductListing(listing);
           const hasImage = listing.image !== null && listing.image.trim() !== '';
           const hasName = listing.name.trim() !== '';
-          const hasPrice = listing.price.trim() !== '';
+          const hasPrice = parseProductPrice(listing.price) !== undefined;
           const shouldBeValid = hasImage && hasName && hasPrice;
           
           return isValid === shouldBeValid;
         }
       ),
+      { numRuns: 100 }
+    );
+  });
+});
+
+describe('Property 4b: Product Price Parsing Strictness', () => {
+  test('price parser accepts only positive finite numeric strings', () => {
+    fc.assert(
+      fc.property(fc.string(), (price) => {
+        const parsed = parseProductPrice(price);
+        const trimmedPrice = price.trim();
+        const numericPrice = Number(trimmedPrice);
+        const shouldBeValid = /^\d+(?:\.\d{1,2})?$/.test(trimmedPrice) && numericPrice > 0;
+
+        return shouldBeValid ? parsed === numericPrice : parsed === undefined;
+      }),
       { numRuns: 100 }
     );
   });
@@ -134,6 +155,14 @@ describe('Property 5: Progress Persistence Round-Trip', () => {
       ),
       { numRuns: 100 }
     );
+  });
+
+  test('loading malformed persisted progress falls back to empty progress', async () => {
+    await AsyncStorage.setItem('streeskill_progress', '{not valid json');
+
+    const loadedProgress = await loadProgress();
+
+    expect(Object.keys(loadedProgress.completedReels)).toHaveLength(0);
   });
 });
 

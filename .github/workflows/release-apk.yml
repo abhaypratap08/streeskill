@@ -62,11 +62,9 @@ jobs:
 
       - name: Download APK
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
           ARTIFACT_URL: ${{ steps.eas.outputs.artifact_url }}
         run: |
-          APK_NAME="StreeSkill-${RELEASE_TAG}.apk"
-          APK_NAME="${APK_NAME//\//-}"
+          APK_NAME="StreeSkill.apk"
           curl --fail --location "$ARTIFACT_URL" --output "$APK_NAME"
           echo "APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
 

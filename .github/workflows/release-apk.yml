@@ -3,11 +3,15 @@ name: Release Android APK
 on:
   release:
     types: [published]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag to attach the APK to
-        required: true
+        description: Release tag to create or update
+        required: false
+        default: manual-apk
 
 permissions:
   contents: write
@@ -71,7 +75,7 @@ jobs:
       - name: Ensure release exists
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
         run: |
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --title "$RELEASE_TAG" --notes "Android APK release."
@@ -79,5 +83,5 @@ jobs:
       - name: Upload APK to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag || github.ref_name }}
         run: gh release upload "$RELEASE_TAG" "$APK_NAME" --repo "$GITHUB_REPOSITORY" --clobber
